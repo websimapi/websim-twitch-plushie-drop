@@ -129,7 +129,7 @@
 <script type="importmap">
     {
       "imports": {
-        "tmi.js": "/tmi.js",
+        "tmi.js": "https://cdn.jsdelivr.net/npm/tmi.js@1.8.5/es/index.js",
         "matter-js": "https://cdn.jsdelivr.net/npm/matter-js@0.19.0/build/matter.mjs"
       }
     }
@@ -317,22 +317,38 @@
 
     // --- Twitch Integration ---
     function connectToTwitch(channel) {
-        if (twitchClient && twitchClient.readyState() === 'OPEN') {
+        if (twitchClient) {
             twitchClient.disconnect();
         }
 
         twitchClient = new tmi.Client({
+            options: { debug: false }, // Set to true for more verbose connection logs
+            connection: {
+                reconnect: true,
+                secure: true
+            },
             channels: [channel]
         });
 
-        twitchClient.connect().catch(console.error);
+        twitchClient.connect().catch(err => {
+            console.error("Failed to connect to Twitch:", err);
+            alert(`Could not connect to channel "${channel}". Please check the name and try again.`);
+            // Show setup screen again
+            setupDiv.style.display = 'block';
+            gameContainer.style.display = 'none';
+        });
 
         twitchClient.on('message', (channel, tags, message, self) => {
             if (self) return;
-            if (message.toLowerCase() === '!drop') {
+            // Only respond to !drop commands
+            if (message.toLowerCase().trim() === '!drop') {
                 const username = tags['display-name'] || 'Someone';
                 dropPlushie(username);
             }
+        });
+
+        twitchClient.on('connected', (address, port) => {
+            console.log(`Successfully connected to Twitch channel: ${channel}`);
         });
     }
 
